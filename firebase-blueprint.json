@@ -1,0 +1,220 @@
+{
+  "entities": {
+    "VerseBookmark": {
+      "title": "VerseBookmark",
+      "description": "A bookmarked Bhagavad Gita shloka saved by a user",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID"
+        },
+        "verseId": {
+          "type": "string",
+          "description": "Canonical verse key such as BG2_47"
+        },
+        "chapter": {
+          "type": "integer",
+          "description": "Chapter number from 1 to 18"
+        },
+        "verse": {
+          "type": "integer",
+          "description": "Shloka number within the chapter"
+        },
+        "chapterTitle": {
+          "type": "string",
+          "description": "Display title of the chapter"
+        },
+        "sanskritPreview": {
+          "type": "string",
+          "description": "Sanskrit text preview"
+        },
+        "hindiPreview": {
+          "type": "string",
+          "description": "Hindi translation preview"
+        },
+        "englishPreview": {
+          "type": "string",
+          "description": "English translation preview"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when bookmarked"
+        }
+      },
+      "required": [
+        "userId",
+        "verseId",
+        "chapter",
+        "verse",
+        "chapterTitle",
+        "sanskritPreview",
+        "hindiPreview",
+        "englishPreview",
+        "createdAt"
+      ]
+    },
+    "VerseReflection": {
+      "title": "VerseReflection",
+      "description": "A personal reflection note written by a user for a shloka",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID"
+        },
+        "verseId": {
+          "type": "string",
+          "description": "Canonical verse key such as BG2_47"
+        },
+        "chapter": {
+          "type": "integer",
+          "description": "Chapter number from 1 to 18"
+        },
+        "verse": {
+          "type": "integer",
+          "description": "Shloka number within the chapter"
+        },
+        "noteText": {
+          "type": "string",
+          "description": "Personal reflection text"
+        },
+        "moodTag": {
+          "type": "string",
+          "description": "Reflective theme tag",
+          "enum": ["Clarity", "Peace", "Duty", "Devotion", "Gratitude"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "userId",
+        "verseId",
+        "chapter",
+        "verse",
+        "noteText",
+        "moodTag",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReadingProgress": {
+      "title": "ReadingProgress",
+      "description": "User reading streak and last-read shloka position",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID"
+        },
+        "lastChapter": {
+          "type": "integer",
+          "description": "Last viewed chapter (1-18)"
+        },
+        "lastVerse": {
+          "type": "integer",
+          "description": "Last viewed verse number"
+        },
+        "currentStreak": {
+          "type": "integer",
+          "description": "Consecutive reading days"
+        },
+        "longestStreak": {
+          "type": "integer",
+          "description": "Longest consecutive reading streak"
+        },
+        "totalVersesRead": {
+          "type": "integer",
+          "description": "Count of unique shlokas marked read"
+        },
+        "lastReadDate": {
+          "type": "string",
+          "description": "ISO date YYYY-MM-DD of most recent reading"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "userId",
+        "lastChapter",
+        "lastVerse",
+        "currentStreak",
+        "longestStreak",
+        "totalVersesRead",
+        "lastReadDate",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ReadVerseRecord": {
+      "title": "ReadVerseRecord",
+      "description": "Record marking an individual shloka as read",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID"
+        },
+        "verseId": {
+          "type": "string",
+          "description": "Canonical verse key such as BG2_47"
+        },
+        "chapter": {
+          "type": "integer",
+          "description": "Chapter number from 1 to 18"
+        },
+        "verse": {
+          "type": "integer",
+          "description": "Shloka number within the chapter"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when marked read"
+        }
+      },
+      "required": [
+        "userId",
+        "verseId",
+        "chapter",
+        "verse",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/bookmarks/{verseId}": {
+      "schema": { "$ref": "#/entities/VerseBookmark" },
+      "description": "User's bookmarked Bhagavad Gita verses"
+    },
+    "/users/{userId}/reflections/{reflectionId}": {
+      "schema": { "$ref": "#/entities/VerseReflection" },
+      "description": "User's personal reflection notes on Bhagavad Gita verses"
+    },
+    "/users/{userId}/progress/{progressId}": {
+      "schema": { "$ref": "#/entities/ReadingProgress" },
+      "description": "User's reading streak and last-read pointer"
+    },
+    "/users/{userId}/read_verses/{verseId}": {
+      "schema": { "$ref": "#/entities/ReadVerseRecord" },
+      "description": "Individual shlokas completed by the user"
+    }
+  }
+}

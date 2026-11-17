@@ -1,0 +1,6 @@
+{
+  "name": "Geeta Scroll",
+  "description": "A swipeable full-screen Bhagavad Gita reading companion with Sanskrit, Hindi, and English shlokas, contextual Krishna artwork, expandable classical and AI explainers, daily streaks, and cloud-synced reflections.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

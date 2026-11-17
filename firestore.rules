@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validators
+    function isValidBookmark(data, userId, verseId) {
+      return data.userId is string && data.userId == userId &&
+             data.verseId is string && data.verseId == verseId && data.verseId.size() <= 32 &&
+             data.chapter is int && data.chapter >= 1 && data.chapter <= 18 &&
+             data.verse is int && data.verse >= 1 && data.verse <= 80 &&
+             data.chapterTitle is string && data.chapterTitle.size() >= 1 && data.chapterTitle.size() <= 120 &&
+             data.sanskritPreview is string && data.sanskritPreview.size() >= 1 && data.sanskritPreview.size() <= 600 &&
+             data.hindiPreview is string && data.hindiPreview.size() >= 1 && data.hindiPreview.size() <= 600 &&
+             data.englishPreview is string && data.englishPreview.size() >= 1 && data.englishPreview.size() <= 600 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidReflection(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.verseId is string && isValidId(data.verseId) && data.verseId.size() <= 32 &&
+             data.chapter is int && data.chapter >= 1 && data.chapter <= 18 &&
+             data.verse is int && data.verse >= 1 && data.verse <= 80 &&
+             data.noteText is string && data.noteText.size() >= 1 && data.noteText.size() <= 2000 &&
+             data.moodTag is string && data.moodTag in ['Clarity', 'Peace', 'Duty', 'Devotion', 'Gratitude'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidProgress(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.lastChapter is int && data.lastChapter >= 1 && data.lastChapter <= 18 &&
+             data.lastVerse is int && data.lastVerse >= 1 && data.lastVerse <= 80 &&
+             data.currentStreak is int && data.currentStreak >= 0 && data.currentStreak <= 10000 &&
+             data.longestStreak is int && data.longestStreak >= 0 && data.longestStreak <= 10000 &&
+             data.totalVersesRead is int && data.totalVersesRead >= 0 && data.totalVersesRead <= 701 &&
+             data.lastReadDate is string && data.lastReadDate.size() <= 20 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidReadVerse(data, userId, verseId) {
+      return data.userId is string && data.userId == userId &&
+             data.verseId is string && data.verseId == verseId && data.verseId.size() <= 32 &&
+             data.chapter is int && data.chapter >= 1 && data.chapter <= 18 &&
+             data.verse is int && data.verse >= 1 && data.verse <= 80 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // Per-user Bookmarks
+    match /users/{userId}/bookmarks/{verseId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(verseId);
+      allow create: if isOwner(userId) &&
+                       isValidId(verseId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'verseId', 'chapter', 'verse',
+                         'chapterTitle', 'sanskritPreview', 'hindiPreview', 'englishPreview', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'verseId', 'chapter', 'verse',
+                         'chapterTitle', 'sanskritPreview', 'hindiPreview', 'englishPreview', 'createdAt'
+                       ]) &&
+                       isValidBookmark(incoming(), userId, verseId);
+      allow update: if false;
+      allow delete: if isOwner(userId) && isValidId(verseId);
+    }
+
+    // Per-user Personal Reflection Notes
+    match /users/{userId}/reflections/{reflectionId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(reflectionId);
+      allow create: if isOwner(userId) &&
+                       isValidId(reflectionId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'verseId', 'chapter', 'verse',
+                         'noteText', 'moodTag', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'verseId', 'chapter', 'verse',
+                         'noteText', 'moodTag', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidReflection(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(reflectionId) &&
+                       isValidReflection(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().verseId == existing().verseId &&
+                       incoming().chapter == existing().chapter &&
+                       incoming().verse == existing().verse &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['noteText', 'moodTag', 'updatedAt']);
+      allow delete: if isOwner(userId) && isValidId(reflectionId);
+    }
+
+    // Per-user Reading Progress & Streak
+    match /users/{userId}/progress/{progressId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(progressId);
+      allow create: if isOwner(userId) &&
+                       isValidId(progressId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'lastChapter', 'lastVerse', 'currentStreak',
+                         'longestStreak', 'totalVersesRead', 'lastReadDate', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'lastChapter', 'lastVerse', 'currentStreak',
+                         'longestStreak', 'totalVersesRead', 'lastReadDate', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidProgress(incoming(), userId);
+      allow update: if isOwner(userId) &&
+                       isValidId(progressId) &&
+                       isValidProgress(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'lastChapter', 'lastVerse', 'currentStreak',
+                         'longestStreak', 'totalVersesRead', 'lastReadDate', 'updatedAt'
+                       ]);
+      allow delete: if isOwner(userId) && isValidId(progressId);
+    }
+
+    // Per-user Completed Shlokas
+    match /users/{userId}/read_verses/{verseId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(verseId);
+      allow create: if isOwner(userId) &&
+                       isValidId(verseId) &&
+                       incoming().keys().hasAll(['userId', 'verseId', 'chapter', 'verse', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'verseId', 'chapter', 'verse', 'createdAt']) &&
+                       isValidReadVerse(incoming(), userId, verseId);
+      allow update: if false;
+      allow delete: if isOwner(userId) && isValidId(verseId);
+    }
+  }
+}
